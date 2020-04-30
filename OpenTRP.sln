@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenTRP_Server", "OpenTRP_Server\OpenTRP_Server.csproj", "{8A01BFAF-BE78-48E4-814A-8B4DD4C94676}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenTRP_Client", "OpenTRP_Client\OpenTRP_Client.csproj", "{3C2C331F-9117-4890-A775-3121EFBA6A3A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8A01BFAF-BE78-48E4-814A-8B4DD4C94676}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A01BFAF-BE78-48E4-814A-8B4DD4C94676}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A01BFAF-BE78-48E4-814A-8B4DD4C94676}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A01BFAF-BE78-48E4-814A-8B4DD4C94676}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C2C331F-9117-4890-A775-3121EFBA6A3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C2C331F-9117-4890-A775-3121EFBA6A3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C2C331F-9117-4890-A775-3121EFBA6A3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C2C331F-9117-4890-A775-3121EFBA6A3A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7ECACCDF-6901-4CF6-A86B-3A19F8F0C6EC}
+	EndGlobalSection
+EndGlobal
