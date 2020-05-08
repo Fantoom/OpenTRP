@@ -6,6 +6,8 @@ using System.Text;
 using NetCoreServer;
 using System.Linq;
 using MessagePack;
+using Newtonsoft.Json;
+using System.Threading;
 
 namespace OpenTRP_Server
 {
@@ -47,8 +49,13 @@ namespace OpenTRP_Server
         {
             try
             {
-                var dataToSend = MessagePackSerializer.Serialize<Package>(new Package(id, data));
-                ProxyClientSession.SendAsync(dataToSend);
+
+                var serializedPackage = MessagePackSerializer.Serialize<Package>(new Package(id, data));
+                var dataToSend = new List<byte>(BitConverter.GetBytes(serializedPackage.Length));
+                dataToSend.AddRange(serializedPackage);
+
+                //var dataToSend = JsonConvert.SerializeObject(new Package(id, data));
+                ProxyClientSession.SendAsync(dataToSend.ToArray());
             }
             catch (Exception e)
             {
@@ -91,9 +98,13 @@ namespace OpenTRP_Server
         {
             string message = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
             Console.WriteLine("Incoming: " + message);
+            int maxChunkSize = OptionSendBufferSize - 42;
+            for (int i = 0; i < message.Length; i += maxChunkSize)
+            {
+                onDataRecived(Id.ToString(), message.Substring(i, Math.Min(maxChunkSize, message.Length - i)));
+               // Thread.Sleep(10);
 
-            onDataRecived(Id.ToString(), message);
-
+            }
             // If the buffer starts with '!' the disconnect the current session
             if (message == "!")
                 Disconnect();

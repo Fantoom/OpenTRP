@@ -6,6 +6,7 @@ using System.Text;
 using NetCoreServer;
 using System.Linq;
 using MessagePack;
+using Newtonsoft.Json;
 namespace OpenTRP_Server
 {
 	class PC_Server : TcpServer
@@ -15,7 +16,7 @@ namespace OpenTRP_Server
 
         public static Server instance { get; private set; }
 
-        public PC_Server(IPAddress address, int port) : base(address, port) { }
+        public PC_Server(IPAddress address, int port) : base(address, port) {  }
 
         protected override TcpSession CreateSession() { return new ProxyClientSession(this); }
 
@@ -32,10 +33,13 @@ namespace OpenTRP_Server
         private void onDataRecived(string id, byte[] buffer)
         {
             var options = MessagePackSerializerOptions.Standard.WithSecurity(MessagePackSecurity.UntrustedData);
+            
             Package package = new Package("err","err");
+            //package = JsonConvert.DeserializeObject<Package>(data);
+
             try
             {
-                package = MessagePackSerializer.Deserialize<Package>(buffer, options);
+                  package = MessagePackSerializer.Deserialize<Package>(buffer);
 
             }
             catch (Exception e)
@@ -76,6 +80,13 @@ namespace OpenTRP_Server
         public delegate void OnDataRecivedByte(string id, byte[] buffer);
         public event OnDataRecivedByte onDataRecivedByte = delegate { };
 
+        public delegate void OnDataFullyRecivedByte(string id, byte[] buffer);
+        public event OnDataFullyRecivedByte onDataFullyRecivedByte = delegate { };
+
+        private int incomingDataSize = -1;
+        private int pendingDataLeft { get { return incomingDataSize - pendingBuffer.Count; } }
+        private List<byte>  pendingBuffer = new List<byte>();
+
         public ProxyClientSession(TcpServer server) : base(server) 
         {
 
@@ -94,9 +105,29 @@ namespace OpenTRP_Server
         protected override void OnReceived(byte[] buffer, long offset, long size)
         {
             string message = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
+
             Console.WriteLine("Incoming: " + message);
 
-            onDataRecivedByte(Id.ToString(),buffer);
+            byte[] usefulBuffer = new byte[(int)size];
+
+            Array.Copy(buffer, (int)offset, usefulBuffer, 0, (int)size);
+
+            byte[] cleanBuffer = new byte[(int)size];
+
+            Array.Copy(usefulBuffer, 5, cleanBuffer, 0, (int)size-5);
+            if (incomingDataSize == -1)
+            {
+                incomingDataSize = BitConverter.ToInt32(buffer.Take(4).ToArray(), 0);
+            }
+            pendingBuffer.AddRange(cleanBuffer);
+            if(incomingDataSize == pendingBuffer.Count)
+            {
+                onDataFullyRecivedByte(Id.ToString(), pendingBuffer.ToArray());
+                CleanBuffer();
+            }
+
+            onDataRecivedByte(Id.ToString(), usefulBuffer);
+
             onDataRecivedStr(Id.ToString(),message);
 
             // If the buffer starts with '!' the disconnect the current session
@@ -104,6 +135,12 @@ namespace OpenTRP_Server
                 Disconnect();
         }
 
+        void CleanBuffer()
+        {
+            pendingBuffer.Clear();
+            incomingDataSize = -1;
+
+        }
         protected override void OnError(SocketError error)
         {
             Console.WriteLine($"ProxyClient session caught an error with code {error}");

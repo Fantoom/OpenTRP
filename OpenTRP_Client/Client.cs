@@ -45,9 +45,11 @@ namespace OpenTRP_Client
 
         protected override void OnReceived(byte[] buffer, long offset, long size)
         {
+
             string data = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
-            onDataRecived(ExternalId,data);
-            
+            onDataRecived(ExternalId, data);
+
+
             Console.WriteLine(data);
         }
 

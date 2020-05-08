@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using MessagePack;
+using Newtonsoft.Json;
 using TcpClient = NetCoreServer.TcpClient;
 
 namespace OpenTRP_Client
@@ -50,6 +52,9 @@ namespace OpenTRP_Client
             if (!_stop)
                 ConnectAsync();
         }
+        private int incomingDataSize = -1;
+        private int pendingDataLeft { get { return incomingDataSize - pendingBuffer.Count; } }
+        private List<byte> pendingBuffer = new List<byte>();
 
         protected override void OnReceived(byte[] buffer, long offset, long size)
         {
@@ -77,27 +82,74 @@ namespace OpenTRP_Client
                 return;
             }
 
+            byte[] usefulBuffer = new byte[(int)size];
+
+            Array.Copy(buffer, (int)offset, usefulBuffer, 0, (int)size);
+
+            byte[] cleanBuffer = new byte[(int)size];
+
+            Array.Copy(usefulBuffer, 5, cleanBuffer, 0, (int)size-5);
+            if(incomingDataSize  == -1) 
+            { 
+            incomingDataSize = BitConverter.ToInt32(buffer.Take(4).ToArray(), 0);
+            }
+            pendingBuffer.AddRange(cleanBuffer);
+            if (incomingDataSize == pendingBuffer.Count)
+            {
             var options = MessagePackSerializerOptions.Standard.WithSecurity(MessagePackSecurity.UntrustedData);
             Package package = new Package("err", "err");
             try
             {
-                package = MessagePackSerializer.Deserialize<Package>(buffer, options);
-                clients[package.Id].SendAsync(package.Data);
+                  package = MessagePackSerializer.Deserialize<Package>(pendingBuffer.ToArray(), options);
+                  //package = JsonConvert.DeserializeObject<Package>(data);
+                  clients[package.Id].SendAsync(package.Data);
+                  CleanBuffer();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
             }
-            
+            }
+
             Console.WriteLine(data);
         }
-
-        void OnClientDataRecived(string externalId, string data)
+        void CleanBuffer()
         {
-            var package = new Package(externalId, data);
-            var dataToSend = MessagePackSerializer.Serialize(package);
+            pendingBuffer.Clear();
+            incomingDataSize = -1;
 
-            SendAsync(dataToSend);
+        }
+        void OnClientDataRecived(string externalId, string RawData)
+        {
+
+            /*for (int i = 0; i < RawData.Length; i += OptionSendBufferSize)
+            {
+                var data = RawData.Substring(i, Math.Min(OptionSendBufferSize, RawData.Length - i));
+                var package = new Package(externalId, data);
+                //var dataToSend = MessagePackSerializer.Serialize(package);
+                var dataToSend = JsonConvert.SerializeObject(package);
+                SendAsync(dataToSend);
+            }*/
+
+            /*int maxChunkSize = OptionSendBufferSize - 42;
+            for (int i = 0; i < RawData.Length; i += maxChunkSize)
+            {
+                var chunkofString = RawData.Substring(i, Math.Min(maxChunkSize, RawData.Length - i));
+                var package = new Package(externalId, chunkofString);
+                var dataToSend = MessagePackSerializer.Serialize(package);
+
+                SendAsync(dataToSend);                
+                //Thread.Sleep(10);
+            }*/
+            var package = new Package(externalId, RawData);
+
+            var serializedPackage = MessagePackSerializer.Serialize(package);
+            var dataToSend = new List<byte>(BitConverter.GetBytes(serializedPackage.Length));
+            dataToSend.AddRange(serializedPackage);
+            SendAsync(dataToSend.ToArray());
+
+
+            //var dataToSend = JsonConvert.SerializeObject(package);
         }
 
         protected override void OnError(SocketError error)
@@ -106,5 +158,11 @@ namespace OpenTRP_Client
         }
 
         private bool _stop;
+
+        static IEnumerable<string> Split(string str, int chunkSize)
+        {
+            return Enumerable.Range(0, str.Length / chunkSize)
+                .Select(i => str.Substring(i * chunkSize, chunkSize));
+        }
     }
 }
